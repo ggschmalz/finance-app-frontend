@@ -1,0 +1,28 @@
+{
+  "transactions": [
+    {
+      "id": "1",
+      "description": "Salário Pleno",
+      "amount": 6500.00,
+      "date": "2026-05-01",
+      "category": "Salário",
+      "type": "INCOME"
+    },
+    {
+      "id": "2",
+      "description": "Feira Supermercado",
+      "amount": 450.50,
+      "date": "2026-05-04",
+      "category": "Alimentação",
+      "type": "EXPENSE"
+    },
+    {
+      "id": "3",
+      "description": "Ifood - Pizza",
+      "amount": 85.90,
+      "date": "2026-05-03",
+      "category": "Lazer",
+      "type": "EXPENSE"
+    }
+  ]
+}
