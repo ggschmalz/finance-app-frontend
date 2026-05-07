@@ -5,15 +5,17 @@ interface SummaryProps {
 }
 
 export function Summary({ transactions }: SummaryProps) {
-  // O reduce percorre o array e acumula os valores de entradas e saídas
   const summary = transactions.reduce(
     (acc, transaction) => {
+      // Converte explicitamente para número para evitar bugs com strings da API
+      const amount = Number(transaction.amount);
+
       if (transaction.type === 'INCOME') {
-        acc.income += transaction.amount;
-        acc.total += transaction.amount;
+        acc.income += amount;
+        acc.total += amount;
       } else {
-        acc.expense += transaction.amount;
-        acc.total -= transaction.amount;
+        acc.expense += amount;
+        acc.total -= amount;
       }
       return acc;
     },

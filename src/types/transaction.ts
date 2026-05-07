@@ -8,5 +8,6 @@ export interface Transaction {
   amount: number;
   date: string;
   category: string;
+  subcategory?: string; // <- NOVO
   type: TransactionType;
 }
