@@ -1,12 +1,5 @@
-import axios from 'axios';
+import { api } from './api';
 import type { Transaction } from '../types/transaction';
-
-export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
 
 export interface CreateTransactionDTO {
   description: string;

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { NavLink } from 'react-router-dom'; // <- IMPORTAÇÃO NOVA
+import { Header } from './Header';
 
 interface LayoutProps {
   children: ReactNode;
@@ -9,7 +10,7 @@ export function Layout({ children }: LayoutProps) {
   
   // Função para aplicar as classes CSS corretas dependendo se o link está ativo ou não
   const navLinkClass = ({ isActive }: { isActive: boolean }) => 
-    `flex items-center space-x-3 px-4 py-3 rounded-md transition-colors ${
+    `flex items-center space-x-3 px-4 pFy-3 rounded-md transition-colors ${
       isActive 
         ? 'bg-blue-600 text-white font-medium shadow-md' 
         : 'hover:bg-slate-800 hover:text-white text-slate-300 font-medium'
@@ -28,15 +29,7 @@ export function Layout({ children }: LayoutProps) {
         </div>
         
         {/* Seção de Perfil de Usuário (Mock para Multi-usuário) */}
-        <div className="flex items-center space-x-3 cursor-pointer hover:bg-gray-50 p-2 rounded-md transition-colors" data-testid="user-profile-menu">
-          <div className="text-right hidden sm:block">
-            <p className="text-sm font-medium text-gray-900" data-testid="user-name">Usuário Teste</p>
-            <p className="text-xs text-gray-500" data-testid="user-role">Administrador</p>
-          </div>
-          <div className="w-9 h-9 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold border border-indigo-200" data-testid="user-avatar">
-            UT
-          </div>
-        </div>
+        <Header />
       </header>
 
       <div className="flex flex-1 overflow-hidden">
