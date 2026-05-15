@@ -20,9 +20,10 @@ interface SettingsContextType {
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
-  const [darkMode, setDarkMode] = useState<boolean>(() => 
-    localStorage.getItem('darkMode') === 'true'
-  );
+  const [darkMode, setDarkMode] = useState<boolean>(() => {
+    const saved = localStorage.getItem('darkMode');
+    return saved === 'true'; // Padrão é false (Modo Claro)
+  });
   
   const [currency, setCurrency] = useState<Currency>(() => 
     (localStorage.getItem('currency') as Currency) || 'BRL'
@@ -34,18 +35,26 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     (localStorage.getItem('palette') as ColorPalette) || 'DEFAULT'
   );
 
-  // Apply Dark Mode Class to HTML Root
+  // Apply Dark Mode Class to HTML Root and Body
   useEffect(() => {
     localStorage.setItem('darkMode', String(darkMode));
     const root = document.documentElement;
+    const body = document.body;
+    
+    console.log(`[Theme] Switching to ${darkMode ? 'DARK' : 'LIGHT'} mode`);
+
     if (darkMode) {
       root.classList.add('dark');
+      body.classList.add('dark');
+      root.style.colorScheme = 'dark';
     } else {
       root.classList.remove('dark');
+      body.classList.remove('dark');
+      root.style.colorScheme = 'light';
     }
   }, [darkMode]);
 
-  // Apply Palette Classes to HTML Root
+  // Apply Palette Classes
   useEffect(() => {
     localStorage.setItem('palette', palette);
     const root = document.documentElement;
@@ -58,6 +67,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     localStorage.setItem('language', language);
     i18n.changeLanguage(language);
+    document.documentElement.lang = language;
   }, [language]);
 
   // Currency

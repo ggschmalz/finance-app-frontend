@@ -1,0 +1,30 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 22
+    commands:
+      - echo Installing dependencies...
+      - npm install
+  pre_build:
+    commands:
+      - echo Creating .env file...
+      # As variáveis VITE_ devem ser configuradas no console do AWS CodeBuild
+      - echo "VITE_API_URL=$VITE_API_URL" >> .env
+      - echo "VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID" >> .env
+  build:
+    commands:
+      - echo Build started on `date`
+      - npm run build
+  post_build:
+    commands:
+      - echo Build completed on `date`
+      # Opcional: Invalidação de cache do CloudFront se o ID estiver configurado
+      # - if [ "$CLOUDFRONT_DISTRIBUTION_ID" != "" ]; then aws cloudfront create-invalidation --distribution-id $CLOUDFRONT_DISTRIBUTION_ID --paths "/*"; fi
+
+artifacts:
+  files:
+    - '**/*'
+  base-directory: 'dist'
+  discard-paths: no
