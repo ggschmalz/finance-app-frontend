@@ -11,7 +11,8 @@ export const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('accessToken');
-    if (token) {
+    // Não envia token para o endpoint de login para evitar conflitos com tokens expirados
+    if (token && !config.url?.includes('/auth/google/')) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;

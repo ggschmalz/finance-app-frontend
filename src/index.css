@@ -43,15 +43,7 @@
 }
 
 @layer base {
-  html {
-    @apply transition-colors duration-500;
-  }
-  
-  html.dark {
-    @apply bg-slate-900 text-slate-100;
-  }
-
-  html:not(.dark) {
-    @apply bg-gray-50 text-slate-900;
+  body {
+    @apply transition-colors duration-300;
   }
 }

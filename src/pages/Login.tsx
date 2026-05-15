@@ -11,9 +11,13 @@ export function Login() {
         await authService.googleLogin(credentialResponse.credential);
         navigate('/');
       }
-    } catch (error) {
-      console.error('Erro na autenticação com o backend:', error);
-      alert('Falha ao autenticar. Tente novamente.');
+    } catch (error: any) {
+      console.error('Erro detalhado na autenticação:', error);
+      if (error.response) {
+        console.error('Dados da resposta de erro:', error.response.data);
+        console.error('Status do erro:', error.response.status);
+      }
+      alert('Falha ao autenticar com o servidor. Verifique sua conexão ou tente novamente.');
     }
   };
 
