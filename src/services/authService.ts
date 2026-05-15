@@ -1,5 +1,7 @@
 import { api } from './api';
 
+export type UserRole = 'ADMIN' | 'STANDARD' | 'UNASSIGNED';
+
 export interface AuthResponse {
   access: string;
   refresh: string;
@@ -7,6 +9,7 @@ export interface AuthResponse {
     email: string;
     name: string;
     picture: string;
+    role: UserRole;
   };
 }
 
@@ -34,5 +37,21 @@ export const authService = {
 
   isAuthenticated: (): boolean => {
     return !!localStorage.getItem('accessToken');
+  },
+
+  getUser: (): AuthResponse['user'] | null => {
+    try {
+      const user = localStorage.getItem('user');
+      if (!user) return null;
+      return JSON.parse(user);
+    } catch (error) {
+      console.error("Erro ao ler usuário do localStorage:", error);
+      return null;
+    }
+  },
+
+  getRole: (): UserRole | null => {
+    const user = authService.getUser();
+    return user?.role || null;
   }
 };

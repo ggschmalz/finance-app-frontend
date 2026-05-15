@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useSettings } from '../hooks/useSettings';
+import { useTranslation } from 'react-i18next';
 import type { CreateTransactionDTO } from '../services/transactionService';
 import type { Transaction } from '../types/transaction';
 
@@ -18,6 +20,8 @@ interface TransactionFormProps {
 }
 
 export function TransactionForm({ onSubmit, transactionToEdit, setIsFormDirty }: TransactionFormProps) {
+  const { t } = useTranslation();
+  const { currency } = useSettings();
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
@@ -26,7 +30,6 @@ export function TransactionForm({ onSubmit, transactionToEdit, setIsFormDirty }:
   const [type, setType] = useState<'INCOME' | 'EXPENSE'>('EXPENSE');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 1. Movemos o resetForm para CIMA do useEffect
   const resetForm = useCallback(() => {
     setDescription('');
     setAmount('');
@@ -36,10 +39,8 @@ export function TransactionForm({ onSubmit, transactionToEdit, setIsFormDirty }:
     setType('EXPENSE');
   }, []);
 
-  // 2. O useEffect agora chama as funções declaradas anteriormente
   useEffect(() => {
     if (transactionToEdit) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDescription(transactionToEdit.description);
       const formattedAmount = Number(transactionToEdit.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       setAmount(formattedAmount);
@@ -95,82 +96,63 @@ export function TransactionForm({ onSubmit, transactionToEdit, setIsFormDirty }:
 
   const availableSubcategories = category ? CATEGORY_MAP[category] || [] : [];
 
+  const inputClass = "w-full border-2 border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white rounded-2xl p-4 text-sm font-black focus:border-brand-500 dark:focus:border-brand-400 outline-none transition-all placeholder:text-slate-300 dark:placeholder:text-slate-700";
+
   return (
-    <form onSubmit={handleSubmit} data-testid="transaction-form">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+    <form onSubmit={handleSubmit} data-testid="transaction-form" className="space-y-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
         
-        <div className="md:col-span-2">
-          <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
-          <input id="description" type="text" required placeholder="Ex: Compra no mercado" value={description} onChange={(e) => trackChange(setDescription, e.target.value)} className="w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500" data-testid="input-description" />
+        <div className="sm:col-span-2">
+          <label htmlFor="description" className="block text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-widest mb-2 ml-2">Descrição</label>
+          <input id="description" type="text" required placeholder="Ex: Compra no mercado" value={description} onChange={(e) => trackChange(setDescription, e.target.value)} className={inputClass} data-testid="input-description" />
         </div>
 
         <div>
-          <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label>
-          <input id="amount" type="text" required placeholder="0,00" value={amount} onChange={handleAmountChange} className="w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500" data-testid="input-amount" />
+          <label htmlFor="amount" className="block text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-widest mb-2 ml-2">Valor ({currency})</label>
+          <input id="amount" type="text" required placeholder="0,00" value={amount} onChange={handleAmountChange} className={inputClass} data-testid="input-amount" />
         </div>
 
         <div>
-          <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-1">Data</label>
-          <input id="date" type="date" required value={date} onChange={(e) => trackChange(setDate, e.target.value)} className="w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500" data-testid="input-date" />
+          <label htmlFor="date" className="block text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-widest mb-2 ml-2">Data</label>
+          <input id="date" type="date" required value={date} onChange={(e) => trackChange(setDate, e.target.value)} className={inputClass} data-testid="input-date" />
         </div>
 
         <div>
-          <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
-          <select id="category" required value={category} onChange={(e) => { trackChange(setCategory, e.target.value); setSubcategory(''); }} className="w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 bg-white" data-testid="select-category">
-            <option value="" disabled>Selecione uma categoria...</option>
+          <label htmlFor="category" className="block text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-widest mb-2 ml-2">Categoria</label>
+          <select id="category" required value={category} onChange={(e) => { trackChange(setCategory, e.target.value); setSubcategory(''); }} className={inputClass} data-testid="select-category">
+            <option value="" disabled className="dark:bg-slate-900">Selecione...</option>
             {Object.keys(CATEGORY_MAP).map(cat => (
-              <option key={cat} value={cat}>{cat}</option>
+              <option key={cat} value={cat} className="dark:bg-slate-900">{cat}</option>
             ))}
           </select>
         </div>
 
         <div>
-          <label htmlFor="subcategory" className="block text-sm font-medium text-gray-700 mb-1">Subcategoria</label>
-          <select id="subcategory" required disabled={!category} value={subcategory} onChange={(e) => trackChange(setSubcategory, e.target.value)} className="w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 bg-white disabled:bg-gray-100" data-testid="select-subcategory">
-            <option value="" disabled>{category ? 'Selecione uma subcategoria...' : 'Escolha a categoria primeiro'}</option>
+          <label htmlFor="subcategory" className="block text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-widest mb-2 ml-2">Subcategoria</label>
+          <select id="subcategory" required disabled={!category} value={subcategory} onChange={(e) => trackChange(setSubcategory, e.target.value)} className={`${inputClass} disabled:opacity-30 disabled:grayscale`} data-testid="select-subcategory">
+            <option value="" disabled className="dark:bg-slate-900">{category ? 'Selecione...' : 'Escolha a categoria'}</option>
             {availableSubcategories.map(sub => (
-              <option key={sub} value={sub}>{sub}</option>
+              <option key={sub} value={sub} className="dark:bg-slate-900">{sub}</option>
             ))}
           </select>
         </div>
       </div>
 
-      <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-100">
-        <div className="flex space-x-4">
-          
-          {/* 3. Correção do TypeScript: Setamos o tipo diretamente e sinalizamos o formulário como alterado */}
-          <label htmlFor="type-income" className="flex items-center space-x-2 cursor-pointer">
-            <input 
-              id="type-income" 
-              type="radio" 
-              name="type" 
-              value="INCOME" 
-              checked={type === 'INCOME'} 
-              onChange={() => { setType('INCOME'); setIsFormDirty(true); }} 
-              className="text-green-600 focus:ring-green-500" 
-              data-testid="radio-income" 
-            />
-            <span className="text-sm font-medium text-gray-700">Entrada</span>
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-8 mt-10 pt-8 border-t border-slate-100 dark:border-slate-800">
+        <div className="flex items-center justify-center sm:justify-start space-x-10">
+          <label htmlFor="type-income" className="flex items-center space-x-3 cursor-pointer group">
+            <input id="type-income" type="radio" name="type" value="INCOME" checked={type === 'INCOME'} onChange={() => { setType('INCOME'); setIsFormDirty(true); }} className="w-5 h-5 text-emerald-500 focus:ring-emerald-500 border-slate-200 dark:border-slate-700 dark:bg-slate-900" data-testid="radio-income" />
+            <span className={`text-xs font-black tracking-widest transition-colors ${type === 'INCOME' ? 'text-emerald-500' : 'text-slate-400 group-hover:text-slate-500'}`}>{t('income').toUpperCase()}</span>
           </label>
           
-          <label htmlFor="type-expense" className="flex items-center space-x-2 cursor-pointer">
-            <input 
-              id="type-expense" 
-              type="radio" 
-              name="type" 
-              value="EXPENSE" 
-              checked={type === 'EXPENSE'} 
-              onChange={() => { setType('EXPENSE'); setIsFormDirty(true); }} 
-              className="text-red-600 focus:ring-red-500" 
-              data-testid="radio-expense" 
-            />
-            <span className="text-sm font-medium text-gray-700">Saída</span>
+          <label htmlFor="type-expense" className="flex items-center space-x-3 cursor-pointer group">
+            <input id="type-expense" type="radio" name="type" value="EXPENSE" checked={type === 'EXPENSE'} onChange={() => { setType('EXPENSE'); setIsFormDirty(true); }} className="w-5 h-5 text-red-500 focus:ring-red-500 border-slate-200 dark:border-slate-700 dark:bg-slate-900" data-testid="radio-expense" />
+            <span className={`text-xs font-black tracking-widest transition-colors ${type === 'EXPENSE' ? 'text-red-500' : 'text-slate-400 group-hover:text-slate-500'}`}>{t('expense').toUpperCase()}</span>
           </label>
-
         </div>
 
-        <button type="submit" disabled={isSubmitting} className={`${transactionToEdit ? 'bg-orange-500 hover:bg-orange-600' : 'bg-blue-600 hover:bg-blue-700'} text-white font-medium py-2 px-6 rounded-md disabled:opacity-50 transition-colors`} data-testid="submit-button">
-          {isSubmitting ? 'Salvando...' : (transactionToEdit ? 'Atualizar' : 'Adicionar')}
+        <button type="submit" disabled={isSubmitting} className={`w-full sm:w-auto ${transactionToEdit ? 'bg-orange-500 hover:bg-orange-600' : 'bg-brand-600 hover:bg-brand-700'} text-white font-black uppercase tracking-widest py-4 px-12 rounded-2xl disabled:opacity-50 transition-all active:scale-95 shadow-xl shadow-brand-500/20`} data-testid="submit-button">
+          {isSubmitting ? '...' : (transactionToEdit ? 'Atualizar' : 'Confirmar')}
         </button>
       </div>
     </form>

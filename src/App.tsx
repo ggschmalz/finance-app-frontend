@@ -3,6 +3,8 @@ import { Transactions } from './pages/Transactions';
 import { Dashboard } from './pages/Dashboard';
 import { Settings } from './pages/Settings';
 import { Login } from './pages/Login';
+import { Waiting } from './pages/Waiting';
+import { Users } from './pages/Users';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
 export function App() {
@@ -17,6 +19,12 @@ export function App() {
           <Route path="/" element={<Transactions />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/waiting" element={<Waiting />} />
+        </Route>
+
+        {/* Rotas de Admin */}
+        <Route element={<ProtectedRoute requiredRole="ADMIN" />}>
+          <Route path="/users" element={<Users />} />
         </Route>
         
         {/* Rota de Not Found */}
@@ -29,5 +37,3 @@ export function App() {
     </BrowserRouter>
   );
 }
-
-export default App;

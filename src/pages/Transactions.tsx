@@ -7,6 +7,7 @@ import { TransactionFilters } from '../components/TransactionFilters';
 import { Modal } from '../components/Modal';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { transactionService } from '../services/transactionService';
+import { useTranslation } from 'react-i18next';
 import type { CreateTransactionDTO } from '../services/transactionService';
 import type { Transaction } from '../types/transaction';
 
@@ -20,20 +21,18 @@ const CATEGORY_MAP: Record<string, string[]> = {
 };
 
 export function Transactions() {
+  const { t } = useTranslation();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Estados de Modais
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [transactionToEdit, setTransactionToEdit] = useState<Transaction | null>(null);
   
-  // Estados de Validação
   const [isFormDirty, setIsFormDirty] = useState(false);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
 
-  // Estados dos Filtros
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('ALL');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
@@ -129,56 +128,61 @@ export function Transactions() {
 
   return (
     <Layout>
-      {/* Cabeçalho da Seção de Transações */}
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-10 sm:mb-12 gap-4 transition-all">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800" data-testid="page-title">Controle de Transações</h2>
-          <p className="text-sm text-gray-500 mt-1">Gerencie suas entradas e saídas financeiras.</p>
+          <h2 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tighter" data-testid="page-title">{t('transactions')}</h2>
+          <p className="text-sm sm:text-base text-slate-500 dark:text-slate-400 mt-1 font-medium italic opacity-80">Gestão financeira total.</p>
         </div>
         <button 
           onClick={() => setIsModalOpen(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium transition-colors shadow-sm flex items-center space-x-2"
+          className="w-full sm:w-auto bg-brand-600 hover:bg-brand-700 text-white px-8 py-4 rounded-[2rem] font-black uppercase tracking-widest transition-all shadow-xl shadow-brand-500/20 flex justify-center items-center space-x-3 active:scale-95"
           data-testid="btn-new-transaction"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
           </svg>
-          <span>Nova Transação</span>
+          <span className="text-xs">{t('new_transaction')}</span>
         </button>
       </div>
       
       {loading ? (
-        <div className="text-center py-10">A carregar dados...</div>
+        <div className="text-center py-32 text-xs font-black text-slate-300 dark:text-slate-700 uppercase tracking-[0.3em] animate-pulse">Sincronizando dados...</div>
       ) : (
         <>
           <Summary transactions={filteredTransactions} />
           
-          {/* Barra de Busca Rápida e Botão de Filtros */}
-          <div className="bg-white p-4 rounded-lg shadow mb-6 flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0 sm:space-x-4">
-            <div className="flex-1 w-full">
+          <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-slate-700/50 mb-8 flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0 sm:space-x-6 transition-colors">
+            <div className="flex-1 w-full relative group">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-600 group-focus-within:text-brand-500 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </span>
               <input
                 type="text"
-                placeholder="Pesquisar por descrição, categoria, data..."
+                placeholder={t('search')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full border border-gray-300 rounded-md p-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+                className="w-full border-2 border-slate-50 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white rounded-2xl pl-12 pr-5 py-3.5 text-sm font-bold focus:border-brand-500 outline-none transition-all placeholder:text-slate-300 dark:placeholder:text-slate-700 shadow-inner"
                 data-testid="search-input"
               />
             </div>
             <button
               onClick={() => setIsFilterModalOpen(true)}
-              className={`px-4 py-2 rounded-md font-medium transition-colors border flex items-center space-x-2
-                ${hasActiveFilters ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100'}`}
+              className={`w-full sm:w-auto px-8 py-3.5 rounded-2xl font-black uppercase tracking-widest transition-all border-2 flex justify-center items-center space-x-3 text-[10px] shadow-sm active:scale-95
+                ${hasActiveFilters 
+                  ? 'bg-brand-50 dark:bg-brand-900/30 border-brand-200 dark:border-brand-800 text-brand-700 dark:text-brand-300' 
+                  : 'bg-white dark:bg-slate-700 border-slate-50 dark:border-slate-600 text-slate-500 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600'}`}
               data-testid="btn-open-filters"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clipRule="evenodd" />
               </svg>
-              <span>Filtros {hasActiveFilters && '*'}</span>
+              <span>{t('filters')} {hasActiveFilters && '*'}</span>
             </button>
           </div>
 
-          <Modal isOpen={isFilterModalOpen} onClose={() => setIsFilterModalOpen(false)} title="Filtros Avançados">
+          <Modal isOpen={isFilterModalOpen} onClose={() => setIsFilterModalOpen(false)} title="Personalizar Filtros">
             <TransactionFilters 
               typeFilter={typeFilter} setTypeFilter={setTypeFilter}
               categoryFilter={categoryFilter} setCategoryFilter={setCategoryFilter}
@@ -187,18 +191,18 @@ export function Transactions() {
               transactions={transactions} 
               categoryMap={CATEGORY_MAP}
             />
-            <div className="mt-6 pt-4 border-t border-gray-100 flex justify-end space-x-3">
-              <button onClick={clearFilters} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md transition-colors" data-testid="btn-clear-filters">Limpar Filtros</button>
-              <button onClick={() => setIsFilterModalOpen(false)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors" data-testid="btn-apply-filters">Aplicar</button>
+            <div className="mt-10 pt-8 border-t border-slate-100 dark:border-slate-800 flex flex-col-reverse sm:flex-row justify-end gap-4">
+              <button onClick={clearFilters} className="w-full sm:w-auto px-8 py-3 text-xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-2xl transition-all" data-testid="btn-clear-filters">Limpar Tudo</button>
+              <button onClick={() => setIsFilterModalOpen(false)} className="w-full sm:w-auto px-12 py-3 text-xs font-black uppercase tracking-widest bg-brand-600 hover:bg-brand-700 text-white rounded-2xl shadow-lg active:scale-95 transition-all" data-testid="btn-apply-filters">Aplicar Filtros</button>
             </div>
           </Modal>
           
-          <Modal isOpen={isModalOpen} onClose={handleAttemptCloseModal} title={transactionToEdit ? 'Editar Transação' : 'Nova Transação'}>
+          <Modal isOpen={isModalOpen} onClose={handleAttemptCloseModal} title={transactionToEdit ? 'Modificar Registro' : 'Lançar Nova Transação'}>
             <TransactionForm onSubmit={handleSaveTransaction} transactionToEdit={transactionToEdit} setIsFormDirty={setIsFormDirty} />
           </Modal>
 
-          <ConfirmModal isOpen={showCloseConfirm} title="Descartar alterações?" message="Tem alterações não guardadas. Tem a certeza de que deseja fechar? Os dados serão perdidos." confirmText="Sim, descartar" onConfirm={forceCloseModal} onCancel={() => setShowCloseConfirm(false)} />
-          <ConfirmModal isOpen={transactionToDelete !== null} title="Excluir Transação" message="Tem a certeza de que deseja excluir esta transação? Esta ação não pode ser desfeita." confirmText="Excluir" onConfirm={confirmDelete} onCancel={() => setTransactionToDelete(null)} />
+          <ConfirmModal isOpen={showCloseConfirm} title="Cancelar Lançamento?" message="Você tem modificações não salvas no formulário. Deseja realmente descartar os dados?" confirmText="Sim, Descartar" onConfirm={forceCloseModal} onCancel={() => setShowCloseConfirm(false)} />
+          <ConfirmModal isOpen={transactionToDelete !== null} title="Excluir Definitivamente?" message="Esta operação irá remover o registro permanentemente do banco de dados. Confirmar exclusão?" confirmText="Sim, Excluir" onConfirm={confirmDelete} onCancel={() => setTransactionToDelete(null)} />
           
           <TransactionTable transactions={filteredTransactions} onEdit={handleEditClick} onDelete={(id) => setTransactionToDelete(id)} />
         </>

@@ -2,123 +2,107 @@ import { useState, useEffect, useMemo } from 'react';
 import Chart from 'react-apexcharts';
 import { Layout } from '../components/Layout';
 import { transactionService } from '../services/transactionService';
+import { currencyService } from '../services/currencyService';
+import type { ExchangeRates } from '../services/currencyService';
+import { useSettings } from '../hooks/useSettings';
+import { useTranslation } from 'react-i18next';
 import type { Transaction } from '../types/transaction';
 import type { ApexOptions } from 'apexcharts';
 
-const MONTHS = [
-  'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
-  'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'
+const MONTHS_KEYS = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
 ];
 
 export function Dashboard() {
+  const { t } = useTranslation();
+  const { currency, darkMode } = useSettings();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [rates, setRates] = useState<ExchangeRates | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
   const [viewMode, setViewMode] = useState<'BOTH' | 'INCOME' | 'EXPENSE'>('BOTH');
 
-  // Corrigindo ordem de declaração e adicionando useCallback para estabilidade
-  const loadTransactions = async () => {
-    try {
-      const data = await transactionService.getAll();
-      setTransactions(data);
-    } catch (error) {
-      console.error('Erro ao carregar transações para o dashboard', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    loadTransactions();
+    const loadData = async () => {
+      try {
+        const [transData, rateData] = await Promise.all([
+          transactionService.getAll(),
+          currencyService.getLatestRates()
+        ]);
+        setTransactions(transData);
+        setRates(rateData);
+      } catch (err) {
+        console.error('Erro ao carregar dados do dashboard:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
   }, []);
 
-  // Extrair anos únicos das transações para o filtro
   const availableYears = useMemo(() => {
-    const years = transactions.map(t => {
-      const date = new Date(t.date);
-      return isNaN(date.getTime()) ? new Date().getFullYear().toString() : date.getFullYear().toString();
-    });
-    const uniqueYears = Array.from(new Set(years)).sort((a, b) => b.localeCompare(a));
-    
-    // Garantir que o ano atual esteja na lista
+    const years = transactions.map(trans => new Date(trans.date).getFullYear().toString());
     const currentYear = new Date().getFullYear().toString();
-    if (!uniqueYears.includes(currentYear)) {
-      uniqueYears.push(currentYear);
-      uniqueYears.sort((a, b) => b.localeCompare(a));
-    }
-    
-    return uniqueYears;
+    return Array.from(new Set([...years, currentYear])).sort((a, b) => b.localeCompare(a));
   }, [transactions]);
 
-  // Processar dados para o gráfico com conversão segura de valores
   const chartData = useMemo(() => {
-    const monthlyIncome = Array(12).fill(0);
-    const monthlyExpense = Array(12).fill(0);
-
-    transactions.forEach(t => {
-      const date = new Date(t.date);
-      if (!isNaN(date.getTime()) && date.getFullYear().toString() === selectedYear) {
-        const month = date.getMonth();
-        const amount = typeof t.amount === 'string' ? parseFloat(t.amount) : t.amount;
-        
-        if (t.type === 'INCOME') {
-          monthlyIncome[month] += amount;
-        } else {
-          monthlyExpense[month] += amount;
-        }
+    const income = Array(12).fill(0);
+    const expense = Array(12).fill(0);
+    transactions.forEach(trans => {
+      const d = new Date(trans.date);
+      if (d.getFullYear().toString() === selectedYear) {
+        const m = d.getMonth();
+        const amt = Number(trans.amount);
+        if (trans.type === 'INCOME') income[m] += amt;
+        else expense[m] += amt;
       }
     });
+    const res = [];
+    if (viewMode !== 'EXPENSE') res.push({ name: t('income'), data: income, color: '#10b981' });
+    if (viewMode !== 'INCOME') res.push({ name: t('expense'), data: expense, color: '#ef4444' });
+    return res;
+  }, [transactions, selectedYear, viewMode, t]);
 
-    const series = [];
-    if (viewMode === 'BOTH' || viewMode === 'INCOME') {
-      series.push({
-        name: 'Entradas',
-        data: monthlyIncome,
-        color: '#10B981' // Emerald 500
-      });
-    }
-    if (viewMode === 'BOTH' || viewMode === 'EXPENSE') {
-      series.push({
-        name: 'Saídas',
-        data: monthlyExpense,
-        color: '#EF4444' // Red 500
-      });
-    }
-
-    return series;
-  }, [transactions, selectedYear, viewMode]);
-
-  // Totais do ano selecionado com conversão segura
   const totals = useMemo(() => {
-    return transactions.reduce((acc, t) => {
-      const date = new Date(t.date);
-      if (!isNaN(date.getTime()) && date.getFullYear().toString() === selectedYear) {
-        const amount = typeof t.amount === 'string' ? parseFloat(t.amount) : t.amount;
-        if (t.type === 'INCOME') acc.income += amount;
-        else acc.expense += amount;
+    return transactions.reduce((acc, trans) => {
+      if (new Date(trans.date).getFullYear().toString() === selectedYear) {
+        const amt = Number(trans.amount);
+        if (trans.type === 'INCOME') acc.inc += amt;
+        else acc.exp += amt;
       }
       return acc;
-    }, { income: 0, expense: 0 });
+    }, { inc: 0, exp: 0 });
   }, [transactions, selectedYear]);
 
   const chartOptions: ApexOptions = {
-    chart: {
-      type: 'area',
-      toolbar: { show: false },
-      zoom: { enabled: false },
-      fontFamily: 'Inter, sans-serif'
+    chart: { 
+      type: 'area', 
+      toolbar: { show: false }, 
+      fontFamily: 'Inter, sans-serif', 
+      background: 'transparent',
+      animations: { enabled: true, speed: 800 }
     },
-    dataLabels: { enabled: false },
-    stroke: { curve: 'smooth', width: 3 },
-    xaxis: {
-      categories: MONTHS,
-      labels: { style: { colors: '#64748b' } }
+    theme: { mode: darkMode ? 'dark' : 'light' },
+    stroke: { curve: 'smooth', width: 4 },
+    grid: { borderColor: darkMode ? '#334155' : '#f1f5f9', strokeDashArray: 4 },
+    xaxis: { 
+      categories: MONTHS_KEYS, 
+      labels: { style: { colors: darkMode ? '#94a3b8' : '#64748b', fontWeight: 600 } } 
     },
-    yaxis: {
-      labels: {
-        formatter: (val) => `R$ ${val.toLocaleString('pt-BR')}`,
-        style: { colors: '#64748b' }
-      }
+    yaxis: { 
+      labels: { 
+        formatter: (v) => v.toLocaleString(), 
+        style: { colors: darkMode ? '#94a3b8' : '#64748b', fontWeight: 600 } 
+      } 
+    },
+    legend: { 
+      position: 'top', 
+      horizontalAlign: 'right', 
+      labels: { colors: darkMode ? '#e2e8f0' : '#1e293b' },
+      fontFamily: 'Inter, sans-serif',
+      fontWeight: 900
     },
     fill: {
       type: 'gradient',
@@ -128,101 +112,76 @@ export function Dashboard() {
         opacityTo: 0.05,
         stops: [20, 100, 100]
       }
-    },
-    tooltip: {
-      y: { formatter: (val) => `R$ ${val.toLocaleString('pt-BR')}` }
-    },
-    grid: {
-      borderColor: '#f1f5f9',
-      strokeDashArray: 4
-    },
-    legend: { position: 'top', horizontalAlign: 'right' }
+    }
   };
 
-  if (loading) {
-    return (
-      <Layout>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-gray-500 animate-pulse">Carregando dados do dashboard...</div>
-        </div>
-      </Layout>
-    );
-  }
+  const formatValue = (v: number) => new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(v);
+
+  if (loading) return <Layout><div className="p-32 text-center font-black text-slate-300 dark:text-slate-700 uppercase tracking-[0.3em] animate-pulse">Sincronizando Relatórios...</div></Layout>;
 
   return (
     <Layout>
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-12 gap-4 transition-all">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">Dashboard Financeiro</h2>
-          <p className="text-sm text-gray-500 mt-1">Análise de evolução mensal das suas finanças.</p>
+          <h2 className="text-3xl sm:text-5xl font-black text-slate-900 dark:text-white tracking-tighter uppercase italic">{t('dashboard')}</h2>
+          <p className="text-sm sm:text-base text-slate-500 dark:text-slate-400 mt-2 font-medium opacity-80">Análise de performance anual.</p>
         </div>
-
-        <div className="flex items-center space-x-3 bg-white p-1.5 rounded-lg shadow-sm border border-gray-100">
-          <select
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(e.target.value)}
-            className="text-sm font-medium text-gray-700 bg-transparent border-none focus:ring-0 cursor-pointer px-3 py-1.5"
-          >
-            {availableYears.map(year => (
-              <option key={year} value={year}>{year}</option>
-            ))}
+        <div className="relative group">
+          <select value={selectedYear} onChange={e => setSelectedYear(e.target.value)} className="bg-white dark:bg-slate-800 border-2 border-slate-50 dark:border-slate-700 focus:border-brand-500 rounded-[1.5rem] px-6 py-3.5 font-black text-slate-900 dark:text-white shadow-sm outline-none transition-all appearance-none cursor-pointer pr-12">
+            {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
           </select>
+          <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-300 dark:text-slate-600 font-black">▼</div>
         </div>
       </div>
 
-      {/* Cards de Resumo Rápido */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <p className="text-sm font-medium text-gray-500 mb-1">Total de Entradas ({selectedYear})</p>
-          <p className="text-2xl font-bold text-emerald-600">R$ {totals.income.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 mb-12">
+        <div className="bg-white dark:bg-slate-800 p-8 rounded-[2.5rem] border border-slate-50 dark:border-slate-700 shadow-sm transition-all hover:shadow-lg">
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">{t('income')}</p>
+          <p className="text-3xl font-black text-emerald-500 tracking-tighter">{formatValue(totals.inc)}</p>
         </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <p className="text-sm font-medium text-gray-500 mb-1">Total de Saídas ({selectedYear})</p>
-          <p className="text-2xl font-bold text-red-600">R$ {totals.expense.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+        <div className="bg-white dark:bg-slate-800 p-8 rounded-[2.5rem] border border-slate-50 dark:border-slate-700 shadow-sm transition-all hover:shadow-lg">
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">{t('expense')}</p>
+          <p className="text-3xl font-black text-red-500 tracking-tighter">{formatValue(totals.exp)}</p>
         </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <p className="text-sm font-medium text-gray-500 mb-1">Saldo Líquido</p>
-          <p className={`text-2xl font-bold ${totals.income - totals.expense >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
-            R$ {(totals.income - totals.expense).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-          </p>
+        <div className="bg-brand-600 p-8 rounded-[2.5rem] shadow-2xl shadow-brand-500/20 text-white transition-all transform hover:scale-[1.02]">
+          <p className="text-[10px] font-black opacity-60 uppercase tracking-widest mb-3">Total Líquido</p>
+          <p className="text-3xl font-black tracking-tighter">{formatValue(totals.inc - totals.exp)}</p>
         </div>
       </div>
 
-      {/* Gráfico de Evolução */}
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-8">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-          <h3 className="text-lg font-semibold text-gray-800">Evolução Mensal</h3>
-          
-          <div className="flex bg-gray-100 p-1 rounded-lg">
-            <button
-              onClick={() => setViewMode('BOTH')}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${viewMode === 'BOTH' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-            >
-              Ambos
-            </button>
-            <button
-              onClick={() => setViewMode('INCOME')}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${viewMode === 'INCOME' ? 'bg-white text-emerald-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-            >
-              Entradas
-            </button>
-            <button
-              onClick={() => setViewMode('EXPENSE')}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${viewMode === 'EXPENSE' ? 'bg-white text-red-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-            >
-              Saídas
-            </button>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6 mb-12">
+        {rates && (
+          <>
+            <div className="bg-slate-50 dark:bg-slate-900/40 p-6 rounded-[2rem] border-2 border-transparent dark:border-slate-800 flex items-center justify-between shadow-inner">
+              <div className="flex items-center space-x-4">
+                <span className="text-2xl drop-shadow-sm">🇺🇸</span>
+                <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none">Câmbio Comercial<br/><span className="text-brand-600 dark:text-brand-400">Dólar Americano</span></span>
+              </div>
+              <p className="text-xl font-black text-slate-900 dark:text-white tracking-tighter">R$ {rates.USD.toFixed(2)}</p>
+            </div>
+            <div className="bg-slate-50 dark:bg-slate-900/40 p-6 rounded-[2rem] border-2 border-transparent dark:border-slate-800 flex items-center justify-between shadow-inner">
+              <div className="flex items-center space-x-4">
+                <span className="text-2xl drop-shadow-sm">🇪🇺</span>
+                <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none">Câmbio Comercial<br/><span className="text-brand-600 dark:text-brand-400">Euro Europeu</span></span>
+              </div>
+              <p className="text-xl font-black text-slate-900 dark:text-white tracking-tighter">R$ {rates.EUR.toFixed(2)}</p>
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className="bg-white dark:bg-slate-800 p-6 sm:p-10 rounded-[3rem] border border-slate-50 dark:border-slate-700 shadow-sm transition-all mb-12">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
+          <h3 className="font-black text-slate-900 dark:text-white uppercase tracking-[0.3em] text-xs">Evolução Mensal</h3>
+          <div className="flex bg-slate-100 dark:bg-slate-900 p-1.5 rounded-2xl w-full md:w-auto shadow-inner">
+            {(['BOTH', 'INCOME', 'EXPENSE'] as const).map(m => (
+              <button key={m} onClick={() => setViewMode(m)} className={`flex-1 md:flex-none px-6 py-2.5 text-[10px] font-black rounded-xl transition-all duration-300 ${viewMode === m ? 'bg-white dark:bg-slate-700 text-brand-600 dark:text-brand-400 shadow-md scale-105' : 'text-slate-400 dark:text-slate-600 hover:text-slate-900 dark:hover:text-slate-200'}`}>
+                {m === 'BOTH' ? 'AMBOS' : m === 'INCOME' ? 'ENTRADAS' : 'SAÍDAS'}
+              </button>
+            ))}
           </div>
         </div>
-
-        <div className="h-[400px] w-full">
-          <Chart
-            options={chartOptions}
-            series={chartData}
-            type="area"
-            height="100%"
-          />
-        </div>
+        <div className="h-[400px] w-full"><Chart options={chartOptions} series={chartData} type="area" height="100%" /></div>
       </div>
     </Layout>
   );
