@@ -19,13 +19,18 @@ ENV VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID
 RUN npm run build
 
 # ==========================================
-# Estágio 2: Nginx de alta performance
+# Estágio 2: Nginx de alta performance com SSL
 # ==========================================
 FROM nginx:alpine
+
+RUN apk add --no-cache openssl
 
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-EXPOSE 80
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
-CMD ["nginx", "-g", "daemon off;"]
+EXPOSE 80 443
+
+ENTRYPOINT ["/docker-entrypoint.sh"]
