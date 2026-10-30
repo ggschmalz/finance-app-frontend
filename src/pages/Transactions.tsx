@@ -66,7 +66,7 @@ export function Transactions() {
       const matchesType = typeFilter === 'ALL' || t.type === typeFilter;
       const matchesCategory = categoryFilter === 'ALL' || t.category === categoryFilter;
       const matchesSubcategory = subcategoryFilter === 'ALL' || t.subcategory === subcategoryFilter;
-      const matchesYear = yearFilter === 'ALL' || new Date(t.date).getFullYear().toString() === yearFilter;
+      const matchesYear = yearFilter === 'ALL' || (t.date ? t.date.split('-')[0] === yearFilter : false);
 
       return matchesSearch && matchesType && matchesCategory && matchesSubcategory && matchesYear;
     });

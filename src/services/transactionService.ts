@@ -12,8 +12,8 @@ export interface CreateTransactionDTO {
 
 export const transactionService = {
   getAll: async (): Promise<Transaction[]> => {
-    const { data } = await api.get<Transaction[]>('/transactions/');
-    return data;
+    const { data } = await api.get<Transaction[] | { results: Transaction[] }>('/transactions/');
+    return Array.isArray(data) ? data : (data.results || []);
   },
 
   create: async (transaction: CreateTransactionDTO): Promise<Transaction> => {

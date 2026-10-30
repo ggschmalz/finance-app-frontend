@@ -13,8 +13,8 @@ export interface User {
 
 export const userService = {
   getUsers: async (): Promise<User[]> => {
-    const { data } = await api.get<User[]>('/users/');
-    return data;
+    const { data } = await api.get<User[] | { results: User[] }>('/users/');
+    return Array.isArray(data) ? data : (data.results || []);
   },
 
   updateUserRole: async (userId: number, role: UserRole): Promise<User> => {

@@ -42,7 +42,7 @@ export function Dashboard() {
   }, []);
 
   const availableYears = useMemo(() => {
-    const years = transactions.map(trans => new Date(trans.date).getFullYear().toString());
+    const years = transactions.map(trans => trans.date ? trans.date.split('-')[0] : new Date().getFullYear().toString());
     const currentYear = new Date().getFullYear().toString();
     return Array.from(new Set([...years, currentYear])).sort((a, b) => b.localeCompare(a));
   }, [transactions]);
@@ -51,12 +51,15 @@ export function Dashboard() {
     const income = Array(12).fill(0);
     const expense = Array(12).fill(0);
     transactions.forEach(trans => {
-      const d = new Date(trans.date);
-      if (d.getFullYear().toString() === selectedYear) {
-        const m = d.getMonth();
+      if (!trans.date) return;
+      const [year, monthStr] = trans.date.split('-');
+      if (year === selectedYear) {
+        const m = parseInt(monthStr, 10) - 1;
         const amt = Number(trans.amount);
-        if (trans.type === 'INCOME') income[m] += amt;
-        else expense[m] += amt;
+        if (m >= 0 && m < 12) {
+          if (trans.type === 'INCOME') income[m] += amt;
+          else expense[m] += amt;
+        }
       }
     });
     const res = [];
@@ -67,7 +70,9 @@ export function Dashboard() {
 
   const totals = useMemo(() => {
     return transactions.reduce((acc, trans) => {
-      if (new Date(trans.date).getFullYear().toString() === selectedYear) {
+      if (!trans.date) return acc;
+      const [year] = trans.date.split('-');
+      if (year === selectedYear) {
         const amt = Number(trans.amount);
         if (trans.type === 'INCOME') acc.inc += amt;
         else acc.exp += amt;
