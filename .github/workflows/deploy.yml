@@ -10,8 +10,83 @@ env:
   ECR_REPOSITORY: finance-app-frontend
 
 jobs:
+  # =========================================================================
+  # JOB 1: Quality Gate E2E (Pré-requisito obrigatório)
+  # =========================================================================
+  test-e2e:
+    name: Run E2E Test Suite (Quality Gate)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Frontend Code
+        uses: actions/checkout@v4
+        with:
+          path: frontend
+
+      - name: Checkout Test Automation Code
+        uses: actions/checkout@v4
+        with:
+          repository: ggschmalz/finance-app-test-automation
+          token: ${{ secrets.GH_PAT_ACTIONS || github.token }}
+          path: test-automation
+
+      - name: Setup Node.js (v20)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: |
+            frontend/package-lock.json
+            test-automation/package-lock.json
+
+      # ---------------------------------------------------------------------
+      # 1. Compilar e Subir o Frontend Localmente
+      # ---------------------------------------------------------------------
+      - name: Install Frontend Dependencies & Start Preview Server
+        working-directory: frontend
+        env:
+          VITE_API_URL: "/api"
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+        run: |
+          npm ci
+          npm run build
+          # Sobe o servidor de preview na porta 5173 em segundo plano
+          npx vite preview --port 5173 &
+          # Aguarda o servidor responder com timeout de 30 segundos
+          npx wait-on http://localhost:5173 --timeout 30000
+
+      # ---------------------------------------------------------------------
+      # 2. Instalar Playwright e Executar Bateria de Testes
+      # ---------------------------------------------------------------------
+      - name: Install Automation Dependencies & Browsers
+        working-directory: test-automation
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Execute E2E Tests
+        working-directory: test-automation
+        env:
+          BASE_URL: "http://localhost:5173"
+          CI: "true"
+        run: npx playwright test
+
+      # ---------------------------------------------------------------------
+      # 3. Preservação de Evidências em Caso de Erro
+      # ---------------------------------------------------------------------
+      - name: Upload Playwright Report & Traces on Failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-e2e-report
+          path: test-automation/playwright-report/
+          retention-days: 14
+
+  # =========================================================================
+  # JOB 2: Build da Imagem Docker e Deploy na AWS
+  # =========================================================================
   build-and-deploy:
     name: Build, Push Image & Trigger EC2
+    needs: [test-e2e]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
