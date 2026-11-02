@@ -116,6 +116,7 @@ jobs:
           AUTO_CREATE_PR: 'true'
           CI: 'true'
           BASE_URL: "http://localhost:5173"
+          EXECUTION_ID: "self_healing_e2e_${{ github.run_id }}_${{ github.run_attempt }}"
         run: |
           cd finance-self-healing-framework
           python cli.py --test "${{ github.event.inputs.test_filter }}"
@@ -127,9 +128,19 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-e2e-report
+          name: playwright-e2e-report-${{ github.run_id }}-${{ github.run_attempt }}
           path: finance-app-test-automation/playwright-report/
           retention-days: 14
+          overwrite: true
+
+      - name: 🛡️ Publicar Logs de Execução do Self-Healing
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: self-healing-logs-${{ github.run_id }}-${{ github.run_attempt }}
+          path: finance-self-healing-framework/logs/
+          retention-days: 14
+          overwrite: true
 
   # =========================================================================
   # JOB 2: Build da Imagem Docker e Deploy na AWS (Bloqueado se o Job 1 falhar)
