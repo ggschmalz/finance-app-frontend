@@ -4,44 +4,81 @@ on:
   push:
     branches: [ main ]
   workflow_dispatch:
+    inputs:
+      test_filter:
+        description: 'Filtro específico de teste (opcional, ex: auth.spec.ts)'
+        required: false
+        default: ''
 
 env:
   AWS_REGION: us-east-1
   ECR_REPOSITORY: finance-app-frontend
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   # =========================================================================
-  # JOB 1: Quality Gate E2E (Pré-requisito obrigatório)
+  # JOB 1: Quality Gate E2E com Orquestrador Multiagente de Self-Healing
   # =========================================================================
   test-e2e:
-    name: Run E2E Test Suite (Quality Gate)
+    name: Run E2E Test Suite & Multi-Agent Self-Healing
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+
     steps:
-      - name: Checkout Frontend Code
+      - name: 📥 Checkout Frontend Code
         uses: actions/checkout@v4
         with:
           path: frontend
 
-      - name: Checkout Test Automation Code
+      - name: 📚 Checkout Product Ground Truth (Base da Verdade)
+        uses: actions/checkout@v4
+        with:
+          repository: ggschmalz/finance-app-product
+          token: ${{ secrets.GH_PAT_ACTIONS || github.token }}
+          path: finance-app-product
+
+      - name: 🧪 Checkout Test Automation Code
         uses: actions/checkout@v4
         with:
           repository: ggschmalz/finance-app-test-automation
           token: ${{ secrets.GH_PAT_ACTIONS || github.token }}
-          path: test-automation
+          path: finance-app-test-automation
 
-      - name: Setup Node.js (v20)
+      - name: 🤖 Checkout Self-Healing Framework
+        uses: actions/checkout@v4
+        with:
+          repository: ggschmalz/finance-self-healing-framework
+          token: ${{ secrets.GH_PAT_ACTIONS || github.token }}
+          path: finance-self-healing-framework
+
+      - name: 🐍 Setup Python (v3.11)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: finance-self-healing-framework/requirements.txt
+
+      - name: 📦 Instalar Dependências do Sistema de Self-Healing
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r finance-self-healing-framework/requirements.txt
+
+      - name: 🟢 Setup Node.js (v20)
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'npm'
           cache-dependency-path: |
             frontend/package-lock.json
-            test-automation/package-lock.json
+            finance-app-test-automation/package-lock.json
 
       # ---------------------------------------------------------------------
       # 1. Compilar e Subir o Frontend Localmente
       # ---------------------------------------------------------------------
-      - name: Install Frontend Dependencies & Start Preview Server
+      - name: 🌐 Subir Servidor de Preview do Frontend
         working-directory: frontend
         env:
           VITE_API_URL: "/api"
@@ -55,34 +92,47 @@ jobs:
           npx wait-on http://localhost:5173 --timeout 30000
 
       # ---------------------------------------------------------------------
-      # 2. Instalar Playwright e Executar Bateria de Testes
+      # 2. Instalar Playwright e Navegadores
       # ---------------------------------------------------------------------
-      - name: Install Automation Dependencies & Browsers
-        working-directory: test-automation
+      - name: 📦 Instalar Dependências do Playwright
+        working-directory: finance-app-test-automation
         run: |
           npm ci
           npx playwright install --with-deps chromium
 
-      - name: Execute E2E Tests
-        working-directory: test-automation
+      # ---------------------------------------------------------------------
+      # 3. Execução dos Testes com Orquestrador de Self-Healing (Quality Gate)
+      # ---------------------------------------------------------------------
+      - name: 🚀 Executar Suíte E2E com Orquestrador de Self-Healing
+        id: self_healing_e2e
         env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          LLM_PROVIDER: ${{ secrets.LLM_PROVIDER || 'gemini' }}
+          BASE_DIR: ${{ github.workspace }}
+          AUTOMATION_DIR: ${{ github.workspace }}/finance-app-test-automation
+          PRODUCT_DIR: ${{ github.workspace }}/finance-app-product
+          GITHUB_TOKEN: ${{ secrets.GH_PAT_ACTIONS || github.token }}
+          AUTO_CREATE_PR: 'true'
+          CI: 'true'
           BASE_URL: "http://localhost:5173"
-          CI: "true"
-        run: npx playwright test
+        run: |
+          cd finance-self-healing-framework
+          python cli.py --test "${{ github.event.inputs.test_filter }}"
 
       # ---------------------------------------------------------------------
-      # 3. Preservação de Evidências em Caso de Erro
+      # 4. Preservação de Evidências em Caso de Erro
       # ---------------------------------------------------------------------
-      - name: Upload Playwright Report & Traces on Failure
+      - name: 📁 Publicar Artefatos do Playwright no GitHub Actions
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-e2e-report
-          path: test-automation/playwright-report/
+          path: finance-app-test-automation/playwright-report/
           retention-days: 14
 
   # =========================================================================
-  # JOB 2: Build da Imagem Docker e Deploy na AWS
+  # JOB 2: Build da Imagem Docker e Deploy na AWS (Bloqueado se o Job 1 falhar)
   # =========================================================================
   build-and-deploy:
     name: Build, Push Image & Trigger EC2
