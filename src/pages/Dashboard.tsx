@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import Chart from 'react-apexcharts';
 import { Layout } from '../components/Layout';
+import { api } from '../services/api';
 import { transactionService } from '../services/transactionService';
 import { currencyService } from '../services/currencyService';
 import type { ExchangeRates } from '../services/currencyService';
@@ -8,6 +9,22 @@ import { useSettings } from '../hooks/useSettings';
 import { useTranslation } from 'react-i18next';
 import type { Transaction } from '../types/transaction';
 import type { ApexOptions } from 'apexcharts';
+
+interface CategoryDistributionItem {
+  category: string;
+  amount: number;
+}
+
+interface DashboardApiData {
+  summary?: {
+    total_income: number;
+    total_expense: number;
+    balance: number;
+  };
+  monthly_evolution?: Array<{ month: number; income: number; expense: number }>;
+  category_distribution?: CategoryDistributionItem[];
+  years?: string[];
+}
 
 const MONTHS_KEYS = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -18,6 +35,7 @@ export function Dashboard() {
   const { t } = useTranslation();
   const { currency, darkMode } = useSettings();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [dashboardApi, setDashboardApi] = useState<DashboardApiData | null>(null);
   const [rates, setRates] = useState<ExchangeRates | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
@@ -26,12 +44,20 @@ export function Dashboard() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [transData, rateData] = await Promise.all([
+        const [transRes, rateRes, dashRes] = await Promise.allSettled([
           transactionService.getAll(),
-          currencyService.getLatestRates()
+          currencyService.getLatestRates(),
+          api.get<DashboardApiData>(`/dashboard/?year=${selectedYear}`)
         ]);
-        setTransactions(transData);
-        setRates(rateData);
+        if (transRes.status === 'fulfilled' && Array.isArray(transRes.value)) {
+          setTransactions(transRes.value);
+        }
+        if (rateRes.status === 'fulfilled') {
+          setRates(rateRes.value);
+        }
+        if (dashRes.status === 'fulfilled' && dashRes.value?.data) {
+          setDashboardApi(dashRes.value.data);
+        }
       } catch (err) {
         console.error('Erro ao carregar dados do dashboard:', err);
       } finally {
@@ -39,7 +65,7 @@ export function Dashboard() {
       }
     };
     loadData();
-  }, []);
+  }, [selectedYear]);
 
   const availableYears = useMemo(() => {
     const years = transactions.map(trans => trans.date ? trans.date.split('-')[0] : new Date().getFullYear().toString());
@@ -69,6 +95,12 @@ export function Dashboard() {
   }, [transactions, selectedYear, viewMode, t]);
 
   const totals = useMemo(() => {
+    if (dashboardApi?.summary && typeof dashboardApi.summary.total_income === 'number') {
+      return {
+        inc: Number(dashboardApi.summary.total_income),
+        exp: Number(dashboardApi.summary.total_expense)
+      };
+    }
     return transactions.reduce((acc, trans) => {
       if (!trans.date) return acc;
       const [year] = trans.date.split('-');
@@ -79,7 +111,20 @@ export function Dashboard() {
       }
       return acc;
     }, { inc: 0, exp: 0 });
-  }, [transactions, selectedYear]);
+  }, [transactions, selectedYear, dashboardApi]);
+
+  const categoryDistribution = useMemo<CategoryDistributionItem[]>(() => {
+    if (dashboardApi?.category_distribution && dashboardApi.category_distribution.length > 0) {
+      return dashboardApi.category_distribution;
+    }
+    const map: Record<string, number> = {};
+    transactions.forEach((trans) => {
+      if (trans.type === 'EXPENSE' && trans.date?.startsWith(selectedYear)) {
+        map[trans.category] = (map[trans.category] || 0) + Number(trans.amount);
+      }
+    });
+    return Object.entries(map).map(([category, amount]) => ({ category, amount }));
+  }, [dashboardApi, transactions, selectedYear]);
 
   const chartOptions: ApexOptions = {
     chart: { 
@@ -188,6 +233,30 @@ export function Dashboard() {
         </div>
         <div className="h-[400px] w-full"><Chart options={chartOptions} series={chartData} type="area" height="100%" /></div>
       </div>
+
+      {categoryDistribution.length > 0 && (
+        <div className="bg-white dark:bg-slate-800 p-6 sm:p-10 rounded-[3rem] border border-slate-50 dark:border-slate-700 shadow-sm transition-all mb-12">
+          <h3 className="font-black text-slate-900 dark:text-white uppercase tracking-[0.3em] text-xs mb-6">
+            Distribuição por Categoria
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {categoryDistribution.map((item) => (
+              <div
+                key={item.category}
+                data-testid={item.category === 'Cartão de Crédito' ? 'card-category-credit-card' : undefined}
+                className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/40 flex items-center justify-between"
+              >
+                <span className="font-black text-sm text-slate-700 dark:text-slate-200">
+                  {item.category}
+                </span>
+                <span className="font-black text-sm text-red-500">
+                  {formatValue(item.amount)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }

@@ -7,6 +7,7 @@ const resources = {
     translation: {
       "dashboard": "Relatórios",
       "transactions": "Transações",
+      "credit_cards": "Cartão de Crédito",
       "users": "Usuários",
       "settings": "Configurações",
       "waiting": "Aguardando Atribuição",
@@ -33,6 +34,7 @@ const resources = {
     translation: {
       "dashboard": "Reports",
       "transactions": "Transactions",
+      "credit_cards": "Credit Cards",
       "users": "Users",
       "settings": "Settings",
       "waiting": "Waiting for Assignment",
