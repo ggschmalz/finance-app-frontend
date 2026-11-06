@@ -118,8 +118,13 @@ jobs:
           BASE_URL: "http://localhost:5173"
           EXECUTION_ID: "self_healing_e2e_${{ github.run_id }}_${{ github.run_attempt }}"
         run: |
+          rm -rf finance-app-test-automation/playwright-report finance-app-test-automation/test-results
           cd finance-self-healing-framework
-          python cli.py --test "${{ github.event.inputs.test_filter }}"
+          if [ -n "${{ github.event.inputs.test_filter }}" ]; then
+            python cli.py --test "${{ github.event.inputs.test_filter }}"
+          else
+            python cli.py
+          fi
 
       # ---------------------------------------------------------------------
       # 4. Preservação de Evidências em Caso de Erro
