@@ -91,7 +91,7 @@ export function CreditCards() {
           className="w-full sm:w-auto bg-brand-600 hover:bg-brand-700 text-white px-8 py-4 rounded-[2rem] font-black uppercase tracking-widest transition-all shadow-xl shadow-brand-500/20 flex justify-center items-center space-x-3 active:scale-95"
           data-testid="btn-new-invoice"
         >
-          <span className="text-xs">Nova Fatura</span>
+          <span className="text-xs">Cadastrar Fatura</span>
         </button>
       </div>
 
