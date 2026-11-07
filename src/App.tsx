@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Transactions } from './pages/Transactions';
 import { Dashboard } from './pages/Dashboard';
+import { CreditCards } from './pages/CreditCards';
+import { InvoiceDetail } from './pages/InvoiceDetail';
 import { Settings } from './pages/Settings';
 import { Login } from './pages/Login';
 import { Waiting } from './pages/Waiting';
@@ -18,6 +20,8 @@ export function App() {
         <Route element={<ProtectedRoute />}>
           <Route path="/" element={<Transactions />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/credit-cards" element={<CreditCards />} />
+          <Route path="/credit-cards/invoice/:id" element={<InvoiceDetail />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/waiting" element={<Waiting />} />
         </Route>

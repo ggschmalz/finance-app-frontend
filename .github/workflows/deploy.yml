@@ -44,6 +44,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ggschmalz/finance-app-test-automation
+          ref: feat/testes-cartao-de-credito
           token: ${{ secrets.GH_PAT_ACTIONS || github.token }}
           path: finance-app-test-automation
 
@@ -148,6 +149,7 @@ jobs:
   build-and-deploy:
     name: Build, Push Image & Trigger EC2
     needs: [test-e2e]
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
