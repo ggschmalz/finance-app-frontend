@@ -100,6 +100,8 @@ jobs:
         run: |
           npm ci
           npx playwright install --with-deps chromium
+          echo "🔍 Listagem de Testes E2E Disponíveis:"
+          npx playwright test --list
 
       # ---------------------------------------------------------------------
       # 3. Execução dos Testes com Orquestrador de Self-Healing (Quality Gate)
@@ -120,7 +122,11 @@ jobs:
           EXECUTION_ID: "self_healing_e2e_${{ github.run_id }}_${{ github.run_attempt }}"
         run: |
           cd finance-self-healing-framework
-          python cli.py --test "${{ github.event.inputs.test_filter }}"
+          TEST_ARG=""
+          if [ -n "${{ github.event.inputs.test_filter }}" ]; then
+            TEST_ARG="--test ${{ github.event.inputs.test_filter }}"
+          fi
+          python cli.py $TEST_ARG
 
       # ---------------------------------------------------------------------
       # 4. Preservação de Evidências em Caso de Erro
