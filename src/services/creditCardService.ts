@@ -61,6 +61,11 @@ export const creditCardService = {
     return data;
   },
 
+  updateExpense: async (id: string, payload: Partial<CreditCardTransaction>): Promise<CreditCardTransaction> => {
+    const { data } = await api.patch<CreditCardTransaction>(`/credit-cards/transactions/${id}/`, payload);
+    return data;
+  },
+
   deleteExpense: async (id: string): Promise<void> => {
     await api.delete(`/credit-cards/transactions/${id}/`);
   }

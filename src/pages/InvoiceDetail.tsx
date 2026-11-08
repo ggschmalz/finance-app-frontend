@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import { Modal } from '../components/Modal';
 import { creditCardService } from '../services/creditCardService';
-import type { CreditCardInvoice } from '../services/creditCardService';
+import type { CreditCardInvoice, CreditCardTransaction } from '../services/creditCardService';
 
 export function InvoiceDetail() {
   const { id } = useParams<{ id: string }>();
@@ -11,6 +11,7 @@ export function InvoiceDetail() {
   const [invoice, setInvoice] = useState<CreditCardInvoice | null>(null);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<CreditCardTransaction | null>(null);
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('Alimentação');
@@ -32,34 +33,76 @@ export function InvoiceDetail() {
     }
   }
 
-  async function handleAddExpense(e: React.FormEvent) {
+  function handleOpenCreateExpense() {
+    setEditingExpense(null);
+    setDescription('');
+    setAmount('');
+    setCategory('Alimentação');
+    setDate(new Date().toISOString().split('T')[0]);
+    setIsModalOpen(true);
+  }
+
+  function handleOpenEditExpense(expense: CreditCardTransaction) {
+    setEditingExpense(expense);
+    setDescription(expense.description);
+    setAmount(Number(expense.amount || 0).toFixed(2).replace('.', ','));
+    setCategory(expense.category);
+    setDate(expense.date);
+    setIsModalOpen(true);
+  }
+
+  async function handleSaveExpense(e: React.FormEvent) {
     e.preventDefault();
     if (!id || !description.trim() || !amount) return;
     setIsSubmitting(true);
     try {
       const parsedAmount = parseFloat(amount.replace(',', '.'));
-      const created = await creditCardService.createExpense({
-        invoice: id,
-        description: description.trim(),
-        amount: parsedAmount,
-        category,
-        date
-      });
-      setInvoice((prev) => {
-        if (!prev) return null;
-        const updatedTransactions = [...(prev.transactions || []), created];
-        const newTotal = updatedTransactions.reduce((acc, t) => acc + Number(t.amount || 0), 0);
-        return {
-          ...prev,
-          total_amount: newTotal,
-          transactions: updatedTransactions
-        };
-      });
+
+      if (editingExpense) {
+        const updated = await creditCardService.updateExpense(editingExpense.id, {
+          description: description.trim(),
+          amount: parsedAmount,
+          category: category.trim(),
+          date
+        });
+        setInvoice((prev) => {
+          if (!prev) return null;
+          const updatedTransactions = (prev.transactions || []).map((t) =>
+            t.id === editingExpense.id ? updated : t
+          );
+          const newTotal = updatedTransactions.reduce((acc, t) => acc + Number(t.amount || 0), 0);
+          return {
+            ...prev,
+            total_amount: newTotal,
+            transactions: updatedTransactions
+          };
+        });
+      } else {
+        const created = await creditCardService.createExpense({
+          invoice: id,
+          description: description.trim(),
+          amount: parsedAmount,
+          category: category.trim(),
+          date
+        });
+        setInvoice((prev) => {
+          if (!prev) return null;
+          const updatedTransactions = [...(prev.transactions || []), created];
+          const newTotal = updatedTransactions.reduce((acc, t) => acc + Number(t.amount || 0), 0);
+          return {
+            ...prev,
+            total_amount: newTotal,
+            transactions: updatedTransactions
+          };
+        });
+      }
+
       setDescription('');
       setAmount('');
+      setEditingExpense(null);
       setIsModalOpen(false);
     } catch (error) {
-      console.error('Erro ao lançar gasto:', error);
+      console.error('Erro ao salvar gasto:', error);
     } finally {
       setIsSubmitting(false);
     }
@@ -99,20 +142,20 @@ export function InvoiceDetail() {
             </button>
             <div>
               <h2 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tighter">
-                Detalhes da Fatura
+                {invoice?.description || 'Carregando...'}
               </h2>
               <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">
-                {invoice?.description} • Vencimento: {invoice?.due_date}
+                Detalhes da Fatura • Vencimento: <span className="text-xl font-bold text-slate-500">{invoice?.due_date}</span>
               </p>
             </div>
           </div>
 
           <button
-            onClick={() => setIsModalOpen(true)}
+            onClick={handleOpenCreateExpense}
             className="w-full sm:w-auto bg-brand-600 hover:bg-brand-700 text-white px-8 py-4 rounded-[2rem] font-black uppercase tracking-widest transition-all shadow-xl shadow-brand-500/20 flex justify-center items-center space-x-3 active:scale-95"
             data-testid="btn-add-expense"
           >
-            <span className="text-xs">Lançar Gasto</span>
+            <span className="text-xs">Novo Gasto</span>
           </button>
         </div>
 
@@ -125,8 +168,10 @@ export function InvoiceDetail() {
             <div className="flex justify-between items-center mb-6 pb-6 border-b border-slate-100 dark:border-slate-700/50">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total Acumulado</p>
-                <p className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">
-                  R$ {Number(invoice?.total_amount || 0).toFixed(2)}
+                <p data-testid="invoice-total">
+                  <span className="text-5xl font-black text-slate-900 dark:text-white tracking-tighter">
+                    R$ {Number(invoice?.total_amount || 0).toFixed(2)}
+                  </span>
                 </p>
               </div>
               <span className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider ${
@@ -158,12 +203,22 @@ export function InvoiceDetail() {
                       <td className="py-4 text-right font-black text-slate-900 dark:text-white text-sm">
                         R$ {Number(t.amount || 0).toFixed(2)}
                       </td>
-                      <td className="py-4 text-right">
+                      <td className="py-4 text-right space-x-2">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditExpense(t)}
+                          className="px-3 py-1 rounded-xl text-xs font-black text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/20 transition-all"
+                          title="Editar Gasto"
+                          data-testid="btn-edit-expense"
+                        >
+                          Editar
+                        </button>
                         <button
                           type="button"
                           onClick={() => handleDeleteExpense(t.id)}
                           className="px-3 py-1 rounded-xl text-xs font-black text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
                           title="Excluir Gasto"
+                          data-testid="btn-delete-expense"
                         >
                           Excluir
                         </button>
@@ -178,16 +233,19 @@ export function InvoiceDetail() {
 
         <Modal
           isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          title="Novo Gasto na Fatura"
+          onClose={() => {
+            setIsModalOpen(false);
+            setEditingExpense(null);
+          }}
+          title={editingExpense ? "Editar Gasto" : "Lançar Gasto"}
         >
-          <form onSubmit={handleAddExpense} className="space-y-6">
+          <form onSubmit={handleSaveExpense} className="space-y-6">
             <div>
               <label className="block text-[10px] uppercase font-black text-slate-400 mb-2">Descrição</label>
               <input
                 type="text"
                 required
-                placeholder="Ex: Uber, Restaurante"
+                placeholder="Ex: Compra no mercado"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 className="w-full border-2 border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-4 text-sm font-black focus:border-brand-500 outline-none"
@@ -208,17 +266,14 @@ export function InvoiceDetail() {
 
             <div>
               <label className="block text-[10px] uppercase font-black text-slate-400 mb-2">Categoria</label>
-              <select
+              <input
+                type="text"
+                required
+                placeholder="Ex: Alimentação"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
                 className="w-full border-2 border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-4 text-sm font-black focus:border-brand-500 outline-none"
-              >
-                <option value="Alimentação">Alimentação</option>
-                <option value="Transporte">Transporte</option>
-                <option value="Lazer">Lazer</option>
-                <option value="Saúde">Saúde</option>
-                <option value="Outros">Outros</option>
-              </select>
+              />
             </div>
 
             <div>
@@ -238,7 +293,7 @@ export function InvoiceDetail() {
                 disabled={isSubmitting}
                 className="bg-brand-600 hover:bg-brand-700 text-white font-black uppercase tracking-widest py-4 px-10 rounded-2xl transition-all shadow-xl shadow-brand-500/20"
               >
-                Adicionar
+                Salvar Gasto
               </button>
             </div>
           </form>

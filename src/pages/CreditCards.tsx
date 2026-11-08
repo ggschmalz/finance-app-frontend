@@ -53,17 +53,15 @@ export function CreditCards() {
     }
   }
 
-  // FALHA PROPOSITAL 2 (SYSTEM_BUG):
-  // Violação intencional da regra STRIPS_US-CRD-03.
-  // Ao clicar em alternar pagamento, o estado da fatura não transiciona para 'Pago',
-  // provocando falha de asserção legítima no teste [US-CRD-03].
   async function handleTogglePaid(invoice: CreditCardInvoice) {
     try {
+      const newStatus = !invoice.is_paid;
       await creditCardService.updateInvoice(invoice.id, {
-        is_paid: invoice.is_paid // Defeito intencional: não inverte para !invoice.is_paid
+        is_paid: newStatus
       });
-      // Não atualiza o estado local para 'Pago', mantendo como 'Pendente'
-      console.warn('[Simulação SYSTEM_BUG]: Estado da fatura permaneceu inalterado');
+      setInvoices((prev) =>
+        prev.map((inv) => (inv.id === invoice.id ? { ...inv, is_paid: newStatus } : inv))
+      );
     } catch (error) {
       console.error('Erro ao atualizar status da fatura:', error);
     }
