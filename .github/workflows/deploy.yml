@@ -133,6 +133,8 @@ jobs:
           BASE_URL: "http://localhost:5173"
           EXECUTION_ID: "self_healing_e2e_${{ github.run_id }}_${{ github.run_attempt }}"
         run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
           cd finance-self-healing-framework
           TEST_ARG=""
           if [ -n "${{ github.event.inputs.test_filter }}" ]; then
