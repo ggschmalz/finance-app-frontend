@@ -95,11 +95,22 @@ jobs:
       # ---------------------------------------------------------------------
       # 2. Instalar Playwright e Navegadores
       # ---------------------------------------------------------------------
+      - name: 📦 Cache dos Binários do Playwright
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('finance-app-test-automation/package-lock.json') }}
+
       - name: 📦 Instalar Dependências do Playwright
         working-directory: finance-app-test-automation
         run: |
           npm ci
-          npx playwright install --with-deps chromium
+          if [ "${{ steps.playwright-cache.outputs.cache-hit }}" != "true" ]; then
+            npx playwright install --with-deps chromium
+          else
+            npx playwright install-deps chromium
+          fi
           echo "🔍 Listagem de Testes E2E Disponíveis:"
           npx playwright test --list
 
