@@ -112,6 +112,7 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           LLM_PROVIDER: ${{ secrets.LLM_PROVIDER || 'gemini' }}
+          SELF_HEALING_MODEL: ${{ secrets.SELF_HEALING_MODEL || 'gemini-3.1-flash-lite' }}
           BASE_DIR: ${{ github.workspace }}
           AUTOMATION_DIR: ${{ github.workspace }}/finance-app-test-automation
           PRODUCT_DIR: ${{ github.workspace }}/finance-app-product
