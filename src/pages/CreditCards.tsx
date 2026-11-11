@@ -53,15 +53,17 @@ export function CreditCards() {
     }
   }
 
+  // FALHA PROPOSITAL 2 (SYSTEM_BUG):
+  // Violação intencional da regra de negócio e do operador formal STRIPS_US-CRD-03.
+  // Ao clicar em alternar pagamento, o estado da fatura não transiciona para 'Pago',
+  // provocando falha de asserção legítima no teste [US-CRD-03].
   async function handleTogglePaid(invoice: CreditCardInvoice) {
     try {
-      const newStatus = !invoice.is_paid;
       await creditCardService.updateInvoice(invoice.id, {
-        is_paid: newStatus
+        is_paid: invoice.is_paid // Defeito intencional: não inverte para !invoice.is_paid
       });
-      setInvoices((prev) =>
-        prev.map((inv) => (inv.id === invoice.id ? { ...inv, is_paid: newStatus } : inv))
-      );
+      // Não atualiza o estado local para 'Pago', mantendo como 'Pendente'
+      console.warn('[Simulação SYSTEM_BUG]: Estado da fatura permaneceu inalterado');
     } catch (error) {
       console.error('Erro ao atualizar status da fatura:', error);
     }
@@ -88,15 +90,16 @@ export function CreditCards() {
           </p>
         </div>
 
-        {/* FALHA PROPOSITAL 1 (SCRIPT_DEFECT):
+        {/* FALHA PROPOSITAL 1 (SCRIPT_DEFECT / EVOLUÇÃO DE REQUISITO RFC-UI-CRD-01):
             O teste busca por 'Nova Fatura' via getByRole('button', { name: /nova fatura/i }).
-            Renderizamos 'Cadastrar Fatura', simulando evolução visual de interface (mutação de DOM). */}
+            Renderizamos 'Adicionar Fatura' (conforme US-CRD-01 atualizada no repositório de produto),
+            provocando quebra no script legado de automação e acionando o ciclo de autocura do SMA. */}
         <button
           onClick={() => setIsModalOpen(true)}
           className="w-full sm:w-auto bg-brand-600 hover:bg-brand-700 text-white px-8 py-4 rounded-[2rem] font-black uppercase tracking-widest transition-all shadow-xl shadow-brand-500/20 flex justify-center items-center space-x-3 active:scale-95"
           data-testid="btn-new-invoice"
         >
-          <span className="text-xs">Cadastrar Fatura</span>
+          <span className="text-xs">Adicionar Fatura</span>
         </button>
       </div>
 
