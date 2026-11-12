@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Home } from './pages/Home';
 import { Transactions } from './pages/Transactions';
 import { Dashboard } from './pages/Dashboard';
 import { CreditCards } from './pages/CreditCards';
@@ -18,7 +19,8 @@ export function App() {
         
         {/* Rotas Privadas Agrupadas */}
         <Route element={<ProtectedRoute />}>
-          <Route path="/" element={<Transactions />} />
+          <Route path="/" element={<Home />} />
+          <Route path="/transactions" element={<Transactions />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/credit-cards" element={<CreditCards />} />
           <Route path="/credit-cards/invoice/:id" element={<InvoiceDetail />} />
