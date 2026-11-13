@@ -91,6 +91,7 @@ jobs:
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
         run: |
           npm ci
+          npm run lint
           npm run build
           # Sobe o servidor de preview na porta 5173 em segundo plano
           npx vite preview --port 5173 &

@@ -41,6 +41,7 @@ export function TransactionForm({ onSubmit, transactionToEdit, setIsFormDirty }:
 
   useEffect(() => {
     if (transactionToEdit) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDescription(transactionToEdit.description);
       const formattedAmount = Number(transactionToEdit.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       setAmount(formattedAmount);

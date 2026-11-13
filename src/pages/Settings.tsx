@@ -1,4 +1,5 @@
 import { useSettings } from '../hooks/useSettings';
+import type { Currency, Language } from '../hooks/useSettings';
 import { Layout } from '../components/Layout';
 import { useTranslation } from 'react-i18next';
 
@@ -100,7 +101,7 @@ export function Settings() {
           <div className="space-y-10">
             <div className="relative group">
               <label htmlFor="currency" className={labelClass}>{t('currency')}</label>
-              <select id="currency" value={currency} onChange={(e) => setCurrency(e.target.value as any)} className={selectClass}>
+              <select id="currency" value={currency} onChange={(e) => setCurrency(e.target.value as Currency)} className={selectClass}>
                 <option value="BRL">🇧🇷 Real Brasileiro (BRL)</option>
                 <option value="USD">🇺🇸 Dólar Americano (USD)</option>
                 <option value="EUR">🇪🇺 Euro Europeu (EUR)</option>
@@ -114,7 +115,7 @@ export function Settings() {
 
             <div className="relative group">
               <label htmlFor="language" className={labelClass}>{t('language')}</label>
-              <select id="language" value={language} onChange={(e) => setLanguage(e.target.value as any)} className={selectClass}>
+              <select id="language" value={language} onChange={(e) => setLanguage(e.target.value as Language)} className={selectClass}>
                 <option value="pt-BR">🇧🇷 Português (Brasil)</option>
                 <option value="en-US">🇺🇸 English (United States)</option>
               </select>
