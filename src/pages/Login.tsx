@@ -1,21 +1,23 @@
 import { GoogleLogin } from '@react-oauth/google';
+import type { CredentialResponse } from '@react-oauth/google';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../services/authService';
 
 export function Login() {
   const navigate = useNavigate();
 
-  const handleGoogleSuccess = async (credentialResponse: any) => {
+  const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
     try {
       if (credentialResponse.credential) {
         await authService.googleLogin(credentialResponse.credential);
         navigate('/');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Erro detalhado na autenticação:', error);
-      if (error.response) {
-        console.error('Dados da resposta de erro:', error.response.data);
-        console.error('Status do erro:', error.response.status);
+      const errObj = error as { response?: { data?: unknown; status?: number } };
+      if (errObj?.response) {
+        console.error('Dados da resposta de erro:', errObj.response.data);
+        console.error('Status do erro:', errObj.response.status);
       }
       alert('Falha ao autenticar com o servidor. Verifique sua conexão ou tente novamente.');
     }

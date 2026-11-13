@@ -18,10 +18,6 @@ export function InvoiceDetail() {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (id) loadInvoice(id);
-  }, [id]);
-
   async function loadInvoice(invoiceId: string) {
     try {
       const data = await creditCardService.getInvoiceById(invoiceId);
@@ -32,6 +28,11 @@ export function InvoiceDetail() {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (id) loadInvoice(id);
+  }, [id]);
 
   function handleOpenCreateExpense() {
     setEditingExpense(null);

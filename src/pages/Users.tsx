@@ -11,10 +11,6 @@ export function Users() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadUsers();
-  }, []);
-
   async function loadUsers() {
     try {
       setLoading(true);
@@ -27,6 +23,11 @@ export function Users() {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadUsers();
+  }, []);
 
   async function handleRoleChange(userId: number, newRole: UserRole) {
     if (!confirm(`Tem certeza que deseja alterar a função para ${newRole}?`)) return;

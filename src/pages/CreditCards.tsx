@@ -14,10 +14,6 @@ export function CreditCards() {
   const [dueDate, setDueDate] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    loadInvoices();
-  }, []);
-
   async function loadInvoices() {
     try {
       const data = await creditCardService.getInvoices();
@@ -28,6 +24,11 @@ export function CreditCards() {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadInvoices();
+  }, []);
 
   const sortedInvoices = useMemo(() => {
     return [...invoices].sort((a, b) => (b.due_date || '').localeCompare(a.due_date || ''));
