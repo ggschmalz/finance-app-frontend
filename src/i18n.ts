@@ -5,6 +5,12 @@ import LanguageDetector from 'i18next-browser-languagedetector';
 const resources = {
   'pt-BR': {
     translation: {
+      "nav_home": "Página Inicial",
+      "nav_dashboard": "Relatório",
+      "nav_transactions": "Transações",
+      "nav_credit_cards": "Cartões de crédito",
+      "nav_users": "Usuários",
+      "nav_settings": "Configurações",
       "dashboard": "Relatórios",
       "transactions": "Transações",
       "credit_cards": "Cartões de Crédito",
@@ -32,6 +38,12 @@ const resources = {
   },
   'en-US': {
     translation: {
+      "nav_home": "Home",
+      "nav_dashboard": "Report",
+      "nav_transactions": "Transactions",
+      "nav_credit_cards": "Credit cards",
+      "nav_users": "Users",
+      "nav_settings": "Settings",
       "dashboard": "Reports",
       "transactions": "Transactions",
       "credit_cards": "Credit Cards",

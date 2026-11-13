@@ -44,7 +44,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ggschmalz/finance-app-test-automation
-          ref: feat/testes-cartao-de-credito
+          ref: main
           token: ${{ secrets.GH_PAT_ACTIONS || github.token }}
           path: finance-app-test-automation
 
@@ -130,7 +130,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GH_PAT_ACTIONS || github.token }}
           GH_TOKEN: ${{ secrets.GH_PAT_ACTIONS || github.token }}
           GITHUB_RUN_ID: ${{ github.run_id }}
-          AUTOMATION_REF: ${{ github.head_ref || 'feat/testes-cartao-de-credito' }}
+          AUTOMATION_REF: ${{ github.head_ref || 'main' }}
           AUTO_CREATE_PR: 'true'
           CI: 'true'
           BASE_URL: "http://localhost:5173"
