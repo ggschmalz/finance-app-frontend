@@ -24,7 +24,7 @@ jobs:
   # =========================================================================
   test-e2e:
     name: Run E2E Test Suite & Multi-Agent Self-Healing
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     outputs:
       auto_merge_pr: ${{ steps.self_healing_e2e.outputs.auto_merge_pr }}
@@ -34,19 +34,19 @@ jobs:
 
     steps:
       - name: 📥 Checkout Frontend Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           path: frontend
 
       - name: 📚 Checkout Product Ground Truth (Base da Verdade)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: ggschmalz/finance-app-product
           token: ${{ secrets.GH_PAT_ACTIONS || github.token }}
           path: finance-app-product
 
       - name: 🧪 Checkout Test Automation Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: ggschmalz/finance-app-test-automation
           ref: main
@@ -54,14 +54,14 @@ jobs:
           path: finance-app-test-automation
 
       - name: 🤖 Checkout Self-Healing Framework
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: ggschmalz/finance-self-healing-framework
           token: ${{ secrets.GH_PAT_ACTIONS || github.token }}
           path: finance-self-healing-framework
 
       - name: 🐍 Setup Python (v3.11)
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.11'
           cache: 'pip'
@@ -72,10 +72,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r finance-self-healing-framework/requirements.txt
 
-      - name: 🟢 Setup Node.js (v20)
-        uses: actions/setup-node@v4
+      - name: 🟢 Setup Node.js (v24)
+        uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 24
           cache: 'npm'
           cache-dependency-path: |
             frontend/package-lock.json
@@ -101,7 +101,7 @@ jobs:
       # 2. Instalar Playwright e Navegadores
       # ---------------------------------------------------------------------
       - name: 📦 Cache dos Binários do Playwright
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         id: playwright-cache
         with:
           path: ~/.cache/ms-playwright
@@ -155,7 +155,7 @@ jobs:
       # ---------------------------------------------------------------------
       - name: 📁 Publicar Artefatos do Playwright no GitHub Actions
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-e2e-report-${{ github.run_id }}-${{ github.run_attempt }}
           path: finance-app-test-automation/playwright-report/
@@ -164,7 +164,7 @@ jobs:
 
       - name: 🛡️ Publicar Logs de Execução do Self-Healing
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: self-healing-logs-${{ github.run_id }}-${{ github.run_attempt }}
           path: finance-self-healing-framework/logs/
@@ -178,13 +178,13 @@ jobs:
     name: Build, Push Image & Trigger EC2
     needs: [test-e2e]
     if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -250,10 +250,10 @@ jobs:
       needs.test-e2e.outputs.auto_merge_pr == 'true' &&
       needs.test-e2e.outputs.healed_branch != '' &&
       (needs.build-and-deploy.result == 'success' || needs.build-and-deploy.result == 'skipped')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: 🧪 Checkout Test Automation Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: ggschmalz/finance-app-test-automation
           ref: main
