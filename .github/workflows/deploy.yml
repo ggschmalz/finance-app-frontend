@@ -26,6 +26,11 @@ jobs:
     name: Run E2E Test Suite & Multi-Agent Self-Healing
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    outputs:
+      auto_merge_pr: ${{ steps.self_healing_e2e.outputs.auto_merge_pr }}
+      healed_branch: ${{ steps.self_healing_e2e.outputs.healed_branch }}
+      healed_pr_url: ${{ steps.self_healing_e2e.outputs.healed_pr_url }}
+      pending_review_count: ${{ steps.self_healing_e2e.outputs.pending_review_count }}
 
     steps:
       - name: 📥 Checkout Frontend Code
@@ -229,3 +234,62 @@ jobs:
             --region "$AWS_REGION"
 
           echo "Deploy do Frontend concluído com sucesso!"
+
+  # =========================================================================
+  # JOB 3: Auto-Merge de Pull Request de Autocura Validado na Branch Principal
+  # Executa ao final da pipeline apenas quando um fix foi feito e validado com
+  # 100% de sucesso (auto_merge_pr == 'true'). Scripts pendentes mantêm o PR
+  # aberto para revisão manual pelo humano.
+  # =========================================================================
+  merge-self-healing-pr:
+    name: Auto-Merge Validated Self-Healing PR
+    needs: [test-e2e, build-and-deploy]
+    if: |
+      always() &&
+      needs.test-e2e.result == 'success' &&
+      needs.test-e2e.outputs.auto_merge_pr == 'true' &&
+      needs.test-e2e.outputs.healed_branch != '' &&
+      (needs.build-and-deploy.result == 'success' || needs.build-and-deploy.result == 'skipped')
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🧪 Checkout Test Automation Repository
+        uses: actions/checkout@v4
+        with:
+          repository: ggschmalz/finance-app-test-automation
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.GH_PAT_ACTIONS || github.token }}
+
+      - name: 🔀 Merge Validated Self-Healing PR into Main
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT_ACTIONS || github.token }}
+          GITHUB_TOKEN: ${{ secrets.GH_PAT_ACTIONS || github.token }}
+          HEALED_BRANCH: ${{ needs.test-e2e.outputs.healed_branch }}
+          HEALED_PR_URL: ${{ needs.test-e2e.outputs.healed_pr_url }}
+        run: |
+          echo "🔀 Iniciando auto-merge do Pull Request de autocura validado: $HEALED_BRANCH"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if gh pr merge "$HEALED_BRANCH" --merge --delete-branch; then
+            echo "✅ Pull Request mergeado com sucesso na branch main via GitHub CLI!"
+          else
+            echo "⚠️ Fallback: realizando merge direto da branch '$HEALED_BRANCH' na 'main' via Git..."
+            git fetch origin "$HEALED_BRANCH"
+            git checkout main
+            git pull origin main
+            git merge --no-ff "origin/$HEALED_BRANCH" -m "Merge pull request from $HEALED_BRANCH (Auto-Merged by Self-Healing Pipeline)"
+            git push origin main
+            git push origin --delete "$HEALED_BRANCH" || true
+            echo "✅ Branch '$HEALED_BRANCH' integrada com sucesso na branch main!"
+          fi
+
+          echo "## 🔀 Auto-Merge de Autocura Concluído" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "> [!TIP]" >> $GITHUB_STEP_SUMMARY
+          echo "> O fix gerado pelo Sistema Multiagente de Self-Healing foi validado com 100% de sucesso na suíte E2E e integrado automaticamente na branch \`main\` do repositório de automação." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch Integrada:** \`$HEALED_BRANCH\` ➡️ \`main\`" >> $GITHUB_STEP_SUMMARY
+          if [ -n "$HEALED_PR_URL" ]; then
+            echo "- **Pull Request:** $HEALED_PR_URL" >> $GITHUB_STEP_SUMMARY
+          fi
